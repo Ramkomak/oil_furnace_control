@@ -11,7 +11,6 @@ valve_pin = Pin(6, Pin.OUT)
 ignition_pin = Pin(7, Pin.OUT)
 
 blow_through = True
-restart_pressed = False
 working_temp_reached = False
 
 try_threshold = 4
