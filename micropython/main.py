@@ -1,6 +1,7 @@
 from machine import Pin, ADC
 from math import log
 from utime import sleep
+import bluetooth
 
 temp_sensor_pin = ADC(10)
 flame_detector_pin = Pin(2, Pin.IN)
@@ -11,6 +12,7 @@ valve_pin = Pin(6, Pin.OUT)
 ignition_pin = Pin(7, Pin.OUT)
 
 blow_through = True
+restart_pressed = False
 working_temp_reached = False
 
 try_threshold = 4
@@ -39,6 +41,25 @@ def temperature_check(term_val):
         heater_pin.value(0)
 
 
+def send_data(data):
+    target_address = "XX:XX:XX:XX:XX:XX"
+
+    port = 1
+
+    try:
+        sock = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
+        sock.connect((target_address, port))
+
+        sock.send(data)
+
+        print(data)
+
+        sock.close()
+
+    except Exception as e:
+        print(f"Error: {e}")
+
+
 while True:
     thermistor_value = temp_sensor_pin.read_u16()
     thermistor_value = adc_to_celsius(thermistor_value)
@@ -62,3 +83,17 @@ while True:
         elif flame_detector_pin.value == 0 & valve_pin.value() == 1:
             valve_pin.value(0)
             raise ValueError(f"Failed ignition.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
