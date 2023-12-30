@@ -1,0 +1,27 @@
+import RPi.GPIO as GPIO
+import time
+import subprocess
+
+GPIO.setmode(GPIO.BCM)
+
+button_pin = 17
+
+GPIO.setup(button_pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+
+def start_application(channel):
+    subprocess.run(["python3", "micropython.py"], shell=True)
+
+
+GPIO.add_event_detect(button_pin, GPIO.FALLING, callback=start_application, bouncetime=300)
+
+try:
+    print("Press the button to start the application.")
+    while True:
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    pass
+
+finally:
+    GPIO.cleanup()
