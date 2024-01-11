@@ -8,6 +8,7 @@ tim = Timer()
 start_tim = Timer()
 flame_watch = Timer()
 oil_watch = Timer()
+up_flag = False
 working_flag = False
 Oil_good = False
 curr_state = 1
@@ -131,11 +132,48 @@ def oil_temp_check(Source):
     if check_temp() >= oil_temp + hysteresis_width:
         heater_pin.value(1)
 
+def UP_flag(pin):
+    global up_flag
+    up_flag = True
+    print("irq")
+    sleep_ms(100)
+
+
+def menu(pin):
+    global oil_temp, up_flag
+    sleep_ms(100)
+    clear_display()
+    display.text("Actual oil temp:", 0, 0, 1)
+    display.text(str(check_temp()), 0, 16, 1)
+    display.text("Temp set:", 0, 32, 1)
+    display.text(str(oil_temp), 74, 32, 1)
+    display.show()
+
+    while True:
+        if up_flag:
+            up_flag = False
+            oil_temp = oil_temp + 1
+
+            clear_display()
+            display.text("Actual oil temp:", 0, 0, 1)
+            display.text(str(check_temp()), 0, 16, 1)
+            display.text("Temp set:", 0, 32, 1)
+            display.text(str(oil_temp), 74, 32, 1)
+            display.show()
+            sleep_ms(100)
+        else:
+            pass
+
+
+
+
 
 print(flame_detector_pin.value())
 start_tim.init(mode=Timer.PERIODIC, period=1000, callback=start_procedure)
 oil_watch.init(mode=Timer.PERIODIC, period=1000, callback=oil_temp_check)
 
+OK_button.irq(trigger=Pin.IRQ_FALLING, handler=menu, priority=1)
+UP_button.irq(trigger=Pin.IRQ_FALLING, handler=UP_flag, priority=2, hard=True)
 
 
 
@@ -145,20 +183,20 @@ while True:
     if heater_pin.value() == 0:
         display.text("Heater ON", 0, 32, 1)
 
-    if which_button() == 1:
-        print("button active")
-        clear_display()
-        display.text("Actual oil temp:", 0, 0, 1)
-        display.text(str(check_temp()), 0, 16, 1)
-        display.text("Temp set:", 0, 32, 1)
-        display.text(str(oil_temp), 74, 32, 1)
-        display.show()
-        while True:
-            sleep_ms(100)
-            if which_button() > 1:
-                break
-            else:
-                continue
+    # if which_button() == 1:
+    #     print("button active")
+    #     clear_display()
+    #     display.text("Actual oil temp:", 0, 0, 1)
+    #     display.text(str(check_temp()), 0, 16, 1)
+    #     display.text("Temp set:", 0, 32, 1)
+    #     display.text(str(oil_temp), 74, 32, 1)
+    #     display.show()
+    #     while True:
+    #         sleep_ms(100)
+    #         if which_button() > 1:
+    #             break
+    #         else:
+    #             continue
 
     if Oil_good:
         show_on_display('Temperature Reached!')
@@ -168,6 +206,8 @@ while True:
         show_on_display('Low Temperature!')
         sleep_ms(100)
         clear_display()
+
+
 
 
 
