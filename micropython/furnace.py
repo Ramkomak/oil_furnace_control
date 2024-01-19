@@ -15,7 +15,7 @@ class Furnace:
         self.pre_purge_time = 5000  # ms
         self.igniter_time = 6000  # ms
         self.curr_state = 1
-        self.oil_temp = 25
+        self.oil_temp = 30
         self.hysteresis_width = 1
         self.error_count = 0
         self.working_flag = False
@@ -35,7 +35,7 @@ class Furnace:
     def check_temp(self):
         self.temp_sensor.convert_temp()
         for rom in self.temp:
-            return self.temp_sensor.read_temp(rom)
+            return round(self.temp_sensor.read_temp(rom), 1)
 
     def oil_temp_check(self, source):
         if self.check_temp() <= self.oil_temp - self.hysteresis_width:
@@ -104,6 +104,14 @@ class Furnace:
             return ticks_diff(ticks_ms(), self.start_time) / 1000
         else:
             return 0
+
+    def set_oil_temp(self, temp):
+        self.oil_temp = temp
+
+    def set_hysteresis_width(self, num):
+        self.hysteresis_width = num
+
+
 
 
 
