@@ -1,11 +1,10 @@
 from machine import Pin, I2C, Timer
-from time import sleep_ms,
+from time import sleep_ms
 import ssd1306
-from rotary import Rotary
 import micropython
 from furnace import Furnace
 from umenu import *
-import random
+
 micropython.alloc_emergency_exception_buf(100)
 
 menu_flag = False
@@ -31,7 +30,6 @@ menu.set_screen(MenuScreen('Main Menu')
     .add(ConfirmItem("EXIT", de_menu, "Do you wanna do that?", ('yeah, sure!', 'nah, sorry!')))
 
 )
-##menu.draw()
 
 up_pin = Pin(10, Pin.IN, Pin.PULL_UP)
 down_pin = Pin(11, Pin.IN, Pin.PULL_UP)
@@ -64,24 +62,6 @@ menu_pin.irq(menu_click, Pin.IRQ_FALLING)
 up_pin.irq(menu_move_up, Pin.IRQ_FALLING)
 down_pin.irq(menu_move_down, Pin.IRQ_FALLING)
 
-
-# x = 0
-# val = 0
-# def menu(change):
-#     global val, x, menu_flag
-#     if change == Rotary.ROT_UP:
-#         if menu_flag:
-#             Base.oil_temp += 1
-#     elif change == Rotary.ROT_DOWN:
-#         if menu_flag:
-#             Base.oil_temp -= 1
-#     elif change == Rotary.SW_PRESS:
-#         if menu_flag:
-#             menu_flag = False
-#         else:
-#             menu_flag = True
-#
-# rotary.add_handler(menu)
 
 while True:
     if Base.failure:

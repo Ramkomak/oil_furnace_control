@@ -1,115 +1,94 @@
-from machine import Pin, Timer
-import onewire
-import ds18x20
-from time import ticks_ms, ticks_diff
+from machine import Pin, I2C, Timer
+from time import sleep_ms
+import ssd1306
+import micropython
+from furnace import Furnace
+from umenu import *
+
+micropython.alloc_emergency_exception_buf(100)
+
+menu_flag = False
+
+Base = Furnace(6, 2, 3, 4, 5)
+
+i2c = I2C(0, sda=Pin(8), scl=Pin(9))
+display = ssd1306.SSD1306_I2C(128, 64, i2c)
+def de_menu():
+    global menu_flag
+    menu_flag = False
+
+menu = Menu(display, 4, 12)
+menu.set_screen(MenuScreen('Main Menu')
+    .add(SubMenuItem('Oil')
+        .add(ValueItem('Change Temp', Base.oil_temp, 20, 100, 5, Base.set_oil_temp))
+        .add(ValueItem('Hysteresis', Base.hysteresis_width, 0, 5, 1, Base.set_hysteresis_width))
+        .add(InfoItem('Cur Temp', str(Base.check_temp()))))
+    .add(SubMenuItem('Timers')
+         .add(InfoItem('Prepurge [s]', str(Base.pre_purge_time/1000)))
+         .add(InfoItem('Igniter [s]', str(Base.igniter_time/1000)))
+         )
+    .add(ConfirmItem("EXIT", de_menu, "Do you wanna do that?", ('yeah, sure!', 'nah, sorry!')))
+
+)
+
+up_pin = Pin(10, Pin.IN, Pin.PULL_UP)
+down_pin = Pin(11, Pin.IN, Pin.PULL_UP)
+menu_pin = Pin(18, Pin.IN, Pin.PULL_UP)
 
 
-class Furnace:
 
-    def __init__(self, flame_detector, valve, heater, fan, magneto):
-        self.flame_detector_pin = Pin(flame_detector, Pin.IN, Pin.PULL_UP)
-        self.valve_pin = Pin(valve, Pin.OUT, value=1)
-        self.heater_pin = Pin(heater, Pin.OUT, value=1)
-        self.fan_pin = Pin(fan, Pin.OUT, value=1)
-        self.magneto_pin = Pin(magneto, Pin.OUT, value=1)
-        self.pre_purge_time = 5000  # ms
-        self.igniter_time = 6000  # ms
-        self.curr_state = 1
-        self.oil_temp = 30
-        self.hysteresis_width = 1
-        self.error_count = 0
-        self.working_flag = False
-        self.oil_good = False
-        self.failure = False
-        self.temp_sensor = ds18x20.DS18X20(onewire.OneWire(Pin(7)))
-        self.temp = self.temp_sensor.scan()
-        self.oil_watch = Timer()
-        self.tim = Timer()
-        self.start_tim = Timer()
-        self.flame_watch = Timer()
-        self.oil_watch.init(mode=Timer.PERIODIC, period=1000, callback=self.oil_temp_check)
-        self.start_tim.init(mode=Timer.PERIODIC, period=1000, callback=self.start_procedure)
-        self.up_time = 0
-        self.start_time = 0
-
-    def check_temp(self):
-        self.temp_sensor.convert_temp()
-        for rom in self.temp:
-            return round(self.temp_sensor.read_temp(rom), 1)
-
-    def oil_temp_check(self, source):
-        if self.check_temp() <= self.oil_temp - self.hysteresis_width:
-            self.heater_pin.value(0)
-            self.oil_good = False
-
-        if self.check_temp() > self.oil_temp:
-            self.oil_good = True
-
-        if self.check_temp() >= self.oil_temp + self.hysteresis_width:
-            self.heater_pin.value(1)
-        if self.failure:
-            self.heater_pin.value(1)
-            self.oil_watch.deinit()
-
-    def real_state_machine(self):
-
-        if self.curr_state == 1:
-            print("state1")
-            self.fan_pin.value(0)
-            self.start_tim.deinit()
-            self.tim.init(mode=Timer.ONE_SHOT, period=self.pre_purge_time, callback=self.next_state)
-        if self.curr_state == 2:
-            print("state2")
-            self.valve_pin.value(0)
-            self.tim.init(mode=Timer.ONE_SHOT, period=500, callback=self.next_state)
-        if self.curr_state == 3:
-            print("state3")
-            self.magneto_pin.value(0)
-            self.tim.init(mode=Timer.ONE_SHOT, period=self.igniter_time, callback=self.next_state)
-        if self.curr_state == 4:
-            print("state4")
-            self.magneto_pin.value(1)
-            if self.flame_detector_pin.value() == 0:
-                self.working_flag = True
-                self.flame_watch.init(mode=Timer.PERIODIC, period=1000, callback=self.start_procedure)
-                print("odpalony")
-                self.start_time = ticks_ms()
-            else:
-                self.valve_pin.value(1)
-                self.error_count += 1
-                self.working_flag = False
-                self.curr_state = 1
-                if self.error_count < 5 and self.oil_good:
-                    self.real_state_machine()
-                else:
-                    self.failure = True
-
-    def next_state(self, source):
-        self.curr_state += 1
-        self.real_state_machine()
-
-    def start_procedure(self, source):
-        print("test")
-        if self.oil_good and self.working_flag == False:
-            self.real_state_machine()
-        if self.working_flag and self.flame_detector_pin.value() == 1:
-            self.flame_watch.deinit()
-            self.valve_pin.value(1)
-            self.fan_pin.value(1)
-            self.working_flag = False
-            self.failure = True
-
-    def get_up_time(self):
-        if self.working_flag:
-            return ticks_diff(ticks_ms(), self.start_time) / 1000
+def menu_click(pin):
+    global menu_flag
+    sleep_ms(50)
+    if pin.value() == 0:
+        if menu_flag:
+            menu.click()
         else:
-            return 0
+            menu_flag = True
+            menu.draw()
 
-    def set_oil_temp(self, temp):
-        self.oil_temp = temp
+def menu_move_up(pin):
+    sleep_ms(50)
+    if pin.value() == 0:
+        if menu_flag:
+            menu.move(1)
+def menu_move_down(pin):
+    sleep_ms(50)
+    if pin.value() == 0:
+        if menu_flag:
+            menu.move(-1)
 
-    def set_hysteresis_width(self, num):
-        self.hysteresis_width = num
+menu_pin.irq(menu_click, Pin.IRQ_FALLING)
+up_pin.irq(menu_move_up, Pin.IRQ_FALLING)
+down_pin.irq(menu_move_down, Pin.IRQ_FALLING)
+
+
+while True:
+    if Base.failure:
+        display.fill(0)
+        display.text('FAILURE!', 0, 0, 1)
+        display.show()
+        sleep_ms(100)
+        display.fill(0)
+        display.text('FAILURE!', 0, 12, 1)
+        display.show()
+        sleep_ms(100)
+        display.fill(0)
+        display.text('FAILURE!', 0, 24, 1)
+        display.show()
+        sleep_ms(100)
+    else:
+        if not menu_flag:
+            display.fill(0)
+            if Base.working_flag:
+                display.text('Working', 0, 0, 1)
+            if not Base.oil_good:
+                display.text('Low Temperature!', 0, 12, 1)
+                display.text('Heater ON', 0, 24, 1)
+            if Base.oil_good:
+                display.text('Oil Good!', 0, 12, 1)
+                display.text('Heater OFF', 0, 24, 1)
+            display.show()
 
 
 

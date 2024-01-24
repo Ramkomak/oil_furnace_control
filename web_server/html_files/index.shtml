@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+    <head> 
+        <title>Oil Furnace</title> 
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+    <body> <h1>Oil Furnace</h1>
+        <br>
+        <h2>Info:</h2>
+        <p>Oil temp: <!--#temp-->C</p>
+        <p>Status: <!--#status--></p>
+        <br>
+        <a href="/index.shtml">Refresh</a>
+   </body>
+</html>
